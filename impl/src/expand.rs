@@ -221,7 +221,7 @@ fn impl_struct(input: Struct) -> TokenStream {
 }
 
 fn impl_enum(input: Enum) -> TokenStream {
-    let _crate_path = get_crate_path(&input.attrs);
+    let crate_path = get_crate_path(&input.attrs);
     let ty = call_site_ident(&input.ident);
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
     let mut error_inferred_bounds = InferredBounds::new();
