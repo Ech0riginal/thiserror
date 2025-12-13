@@ -7,6 +7,13 @@ mod my_error_lib {
     pub use thiserror::*;
 }
 
+// Test multi-segment path like common::thiserror
+mod common {
+    pub mod thiserror {
+        pub use thiserror::*;
+    }
+}
+
 #[test]
 fn test_crate_path_struct() {
     #[derive(Debug, my_error_lib::Error)]
@@ -111,5 +118,23 @@ fn test_crate_path_transparent() {
 
     let err = TransparentError(InnerError);
     assert_eq!(err.to_string(), "inner error");
+}
+
+#[test]
+fn test_multi_segment_crate_path() {
+    #[derive(Debug, common::thiserror::Error)]
+    #[thiserror(crate = "common::thiserror")]
+    enum MyError {
+        #[error("variant a")]
+        VariantA,
+        #[error("variant b")]
+        VariantB,
+    }
+
+    let err = MyError::VariantA;
+    assert_eq!(err.to_string(), "variant a");
+
+    let err = MyError::VariantB;
+    assert_eq!(err.to_string(), "variant b");
 }
 

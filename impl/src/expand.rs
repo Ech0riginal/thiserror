@@ -1,5 +1,5 @@
 use crate::ast::{Enum, Field, Input, Struct};
-use crate::attr::Trait;
+use crate::attr::{Attrs, Trait};
 use crate::fallback;
 use crate::generics::InferredBounds;
 use crate::private;
@@ -28,7 +28,16 @@ fn try_expand(input: &DeriveInput) -> Result<TokenStream> {
     })
 }
 
+fn get_crate_path(attrs: &Attrs) -> TokenStream {
+    if let Some(path) = &attrs.crate_path {
+        quote!(#path)
+    } else {
+        quote!(::thiserror)
+    }
+}
+
 fn impl_struct(input: Struct) -> TokenStream {
+    let _crate_path = get_crate_path(&input.attrs);
     let ty = call_site_ident(&input.ident);
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
     let mut error_inferred_bounds = InferredBounds::new();
@@ -212,6 +221,7 @@ fn impl_struct(input: Struct) -> TokenStream {
 }
 
 fn impl_enum(input: Enum) -> TokenStream {
+    let _crate_path = get_crate_path(&input.attrs);
     let ty = call_site_ident(&input.ident);
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
     let mut error_inferred_bounds = InferredBounds::new();
