@@ -15,6 +15,7 @@ pub struct Attrs<'a> {
     pub from: Option<From<'a>>,
     pub transparent: Option<Transparent<'a>>,
     pub fmt: Option<Fmt<'a>>,
+    pub crate_path: Option<syn::Path>,
 }
 
 #[derive(Clone)]
@@ -74,11 +75,14 @@ pub fn get(input: &[Attribute]) -> Result<Attrs> {
         from: None,
         transparent: None,
         fmt: None,
+        crate_path: None,
     };
 
     for attr in input {
         if attr.path().is_ident("error") {
             parse_error_attribute(&mut attrs, attr)?;
+        } else if attr.path().is_ident("thiserror") {
+            parse_thiserror_attribute(&mut attrs, attr)?;
         } else if attr.path().is_ident("source") {
             attr.meta.require_path_only()?;
             if attrs.source.is_some() {
@@ -119,6 +123,33 @@ pub fn get(input: &[Attribute]) -> Result<Attrs> {
     }
 
     Ok(attrs)
+}
+
+fn parse_thiserror_attribute<'a>(attrs: &mut Attrs<'a>, attr: &'a Attribute) -> Result<()> {
+    attr.parse_args_with(|input: ParseStream| {
+        let lookahead = input.lookahead1();
+        if lookahead.peek(Token![crate]) {
+            input.parse::<Token![crate]>()?;
+            input.parse::<Token![=]>()?;
+            let path_str: LitStr = input.parse()?;
+            let path: syn::Path = path_str.parse().map_err(|_| {
+                Error::new_spanned(
+                    &path_str,
+                    format!("failed to parse path: {:?}", path_str.value()),
+                )
+            })?;
+            if attrs.crate_path.is_some() {
+                return Err(Error::new_spanned(
+                    attr,
+                    "duplicate #[thiserror(crate = ...)] attribute",
+                ));
+            }
+            attrs.crate_path = Some(path);
+            Ok(())
+        } else {
+            Err(lookahead.error())
+        }
+    })
 }
 
 fn parse_error_attribute<'a>(attrs: &mut Attrs<'a>, attr: &'a Attribute) -> Result<()> {
